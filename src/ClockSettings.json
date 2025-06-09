@@ -1,0 +1,9 @@
+{
+    "WifiSSID" : "NSN-IoT",
+    "WifiPWD":  "InternetOfThingsNSN!",
+    "BlynkKey": "JGsEppJAoNMvsMIf92apnwYIsahCY1LW",
+    "ClockMode" : 0,
+    "urlActueleWind" : "https://wind.non-stop.nl",
+    "url" : "https://wind.non-stop.nl/6225.html",
+    "KnopenMin" : 14
+}
