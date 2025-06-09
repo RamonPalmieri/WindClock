@@ -25,7 +25,7 @@ void readFile(fs::FS &fs, const char * path){
   }
   file.close();
 }
-
+/*
 struct ClockSettings {
     char WifiSSID[64];
     char WifiPWD[64];
@@ -35,8 +35,7 @@ struct ClockSettings {
     char url[64];
     int KnopenMin;
 };
-
-
+*/
 // Loads the configuration from a file
 ClockSettings LoadClockSettings (const char *filename, ClockSettings &settings) {
 
@@ -82,6 +81,10 @@ ClockSettings LoadClockSettings (const char *filename, ClockSettings &settings) 
 
     // Close the file (Curiously, File's destructor doesn't close the file)
     file.close();
+    SD.end();               // Deinitialize SD card
+    spi.end();              // Deinitialize SPI bus
+    pinMode(CS, OUTPUT);    // Ensure CS pin is not floating
+    digitalWrite(CS, HIGH); // Disable chip select
     return settings;
 }
 
