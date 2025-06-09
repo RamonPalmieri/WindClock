@@ -1,26 +1,24 @@
 {
-  "name": "actuelewind",
+  "name": "windclock",
   "version": "1.0.0",
-  "description": "Scripting to get specific data from ActueleWind",
+  "description": "WindClock LaserCut",
   "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RamonPalmieri/ActueleWind.git"
+    "url": "git+https://github.com/RamonPalmieri/WindClock.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/RamonPalmieri/ActueleWind/issues"
+    "url": "https://github.com/RamonPalmieri/WindClock/issues"
   },
-  "homepage": "https://github.com/RamonPalmieri/ActueleWind#readme",
-  "devDependencies": {
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/github": "^11.0.3",
-    "semantic-release": "^24.2.5"
-  }
+  "homepage": "https://github.com/RamonPalmieri/WindClock#readme"
 }
