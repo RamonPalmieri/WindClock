@@ -6,14 +6,17 @@
 #include <ESP32Ping.h>
 #include <HTTPClient.h>
 
+#include "ClockSettings.h"
 #include <NSNWindClockLeds.h> // Staat in de Include folder
 #include <NSNSDCard.h>
+#include "WindClockAP.cpp"
+
 
 #define DATA_PIN 4
 #define FRAMES_PER_SECOND  120
 
 const char *filename = "/ClockSettings.json";  // <- SD library uses 8.3 filenames
-ClockSettings settings;                        // <- global configuration object
+//ClockSettings settings;                        // <- global configuration object
 
 char urlActueleWind[] = "";
 char url[] = "";
@@ -84,44 +87,71 @@ struct WindData {
 WindData spot;
 
 void setup() {
-	// sanity check delay - allows reprogramming if accidently blowing power w/leds
-   	delay(2000);
+    delay(2000);  // Allow time for power stabilization
     Serial.begin(115200);
-    FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
-    settings = LoadClockSettings(filename, settings);
 
-    Serial.println();
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(settings.WifiSSID);
-    Serial.println(settings.WifiPWD); 
-    
-    WiFi.begin(settings.WifiSSID, settings.WifiPWD);
+    FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
 
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
+    loadSettingsFromNVS();
+
+    bool wifiConnected = false;
+
+    if (strlen(settings.WifiSSID) > 0 && strlen(settings.WifiPWD) > 0) {
+        Serial.println("Trying WiFi from NVS...");
+        Serial.print("SSID: ");
+        Serial.println(settings.WifiSSID);
+
+        WiFi.begin(settings.WifiSSID, settings.WifiPWD);
+        for (int i = 0; i < 10; ++i) {
+            if (WiFi.status() == WL_CONNECTED) {
+                wifiConnected = true;
+                break;
+            }
+            delay(500);
+            Serial.print(".");
+        }
     }
 
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-  /*
-  Blynk.begin(settings.BlynkKey, settings.WifiSSID, settings.WifiPWD);
-  Blynk.setProperty(V0, "onLabel", "Clock Mode");
-  Blynk.setProperty(V0, "offLabel", "Clock Mode");
-  // Set Kitespots
-  Blynk.setProperty(V2, "labels", "IJmuiden", "Schellinkhout");
-  */
-  FetchWindData();
+    if (!wifiConnected) {
+        Serial.println("\nTrying to load WiFi settings from SD card...");
+        settings = LoadClockSettings(filename, settings);
 
-  // Setup Interrupt Timer
-  timer = timerBegin(0, 80, true); // timer 0, MWDT clock period = 12,5ns *TIMGn_Tx_WDT_CLK_PRESCALE -> 12,5 ns * 80 -> 1000 ns
-  timerAttachInterrupt(timer, &onTimerSeconde, true); // edge (not level) triggered
-  timerAlarmWrite(timer, 1000000, true); // 1000000 * 1 us = 1s, autoreload true
-  timerAlarmEnable(timer); //enable
+        if (strlen(settings.WifiSSID) > 0 && strlen(settings.WifiPWD) > 0) {
+            Serial.print("SSID from SD: ");
+            Serial.println(settings.WifiSSID);
+            WiFi.begin(settings.WifiSSID, settings.WifiPWD);
+            for (int i = 0; i < 10; ++i) {
+                if (WiFi.status() == WL_CONNECTED) {
+                    wifiConnected = true;
+                    break;
+                }
+                delay(500);
+                Serial.print(".");
+            }
+        }
+    }
 
+    if (wifiConnected) {
+        saveSettingsToNVS();  // Save all settings to NVS
+        Serial.println("\nWiFi connected");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+    } else {
+        Serial.println("\nWiFi connection failed. Starting Access Point...");
+        WiFi.mode(WIFI_AP);
+        WiFi.softAP("ap_WindClock", "windClock");
+        Serial.println("Access Point started: ap_WindClock");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.softAPIP());
+        startAccessPointWebServer();
+    }
+
+    blnFetchWindData = true;
+
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &onTimerSeconde, true);
+    timerAlarmWrite(timer, 1000000, true);
+    timerAlarmEnable(timer);
 }
 
 void loop() {
@@ -132,13 +162,7 @@ void loop() {
   LightStatus();
   LightRichting();
   LightKnopen();
-  
-  delay(1000);
 
-  if(blnBlynkUpdate){
-    blnBlynkUpdate = false;
-    Blynk.run();
-  }
   */
 
   if(blnFetchWindData)
@@ -160,6 +184,7 @@ void loop() {
     }
     RefreshHoogLaag();
   }
+  handleAccessPointClient();
 }
 
 void IRAM_ATTR onTimerSeconde(){
@@ -235,20 +260,37 @@ void FetchWindData()
       {
         Serial.println(" -> YES!!");
 
-        DynamicJsonDocument doc(payload.length()*2);
-        deserializeJson(doc, payload);
+        DynamicJsonDocument doc(payload.length() * 2);
+        DeserializationError error = deserializeJson(doc, payload);
+        if (error) {
+          Serial.print("deserializeJson() failed: ");
+          Serial.println(error.c_str());
+          return;
+        }
 
-        strlcpy(spot.Naam, doc["StationsNaam"] | "example.com", sizeof(spot.Naam)); 
-        strlcpy(spot.Code, doc["StationsCode"] | "Dummy", sizeof(spot.Code));
-        strlcpy(spot.TijdStip, doc["TijdStip"] | "Dummy", sizeof(spot.TijdStip));
-         
-        spot.RichtingVan = atoi(doc["VaarrichtingVan"]) | 0;
-        spot.RichtingTot = atoi(doc["VaarrichtingTot"]) | 0;
-        spot.Temperatuur = atof(doc["TemperatuurGC"]) * 10 ;
-        spot.Wind = ConvertMSToKnots(atof(doc["WindsnelheidMS"])) | 0;
-        spot.WindStoot = ConvertMSToKnots(atof(doc["WindstotenMS"])) | 0;
-        spot.WindRichting = atoi(doc["WindrichtingGR"]);
-        
+        JsonObject body = doc["body"];
+        if (!body) {
+          Serial.println("Missing 'body' object in JSON response.");
+          return;
+        }
+
+        strlcpy(spot.Naam, body["locatie"] | "example.com", sizeof(spot.Naam));
+        strlcpy(spot.Code, "6225", sizeof(spot.Code));
+        //spot.Code = '6225'; // We use a fixed code for now, because we only have one spot
+        Serial.print("SpotCode: ");
+        Serial.println(spot.Code);
+        strlcpy(spot.TijdStip, "", sizeof(spot.TijdStip));
+
+        spot.RichtingVan = atoi(body["windrichtingVan"] | "0");
+        spot.RichtingTot = atoi(body["windrichtingTot"] | "0");
+        spot.Temperatuur = 0;
+        float windRaw = body["Windsnelheid"] | 0.0;
+        float gustRaw = body["Windstoten"] | 0.0;
+
+        spot.Wind = (int)(windRaw + 0.5);
+        spot.WindStoot = (int)(gustRaw + 0.5);
+        spot.WindRichting = atoi(body["windrichtingGR"] | "0");
+
         spot.Error = false;
 
         RetryCounter = 0;

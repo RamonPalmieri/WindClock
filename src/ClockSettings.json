@@ -3,7 +3,7 @@
     "WifiPWD":  "InternetOfThingsNSN!",
     "BlynkKey": "JGsEppJAoNMvsMIf92apnwYIsahCY1LW",
     "ClockMode" : 0,
-    "urlActueleWind" : "https://wind.non-stop.nl",
-    "url" : "https://wind.non-stop.nl/6225.html",
+    "urlActueleWind" : "http://192.168.2.6/windstats/windstats.php",
+    "url" : "http://192.168.2.6/windstats/windstats.php?station=6225",
     "KnopenMin" : 14
 }
