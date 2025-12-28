@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/RamonPalmieri/WindClock/compare/v1.2.0...v1.3.0) (2025-12-28)
+
+
+### Features
+
+* OTA support with 1password protected OTA pwd ([4d4afc9](https://github.com/RamonPalmieri/WindClock/commit/4d4afc9d1c53e516b3401320b20dc4685394515a))
+
 # [1.2.0](https://github.com/RamonPalmieri/WindClock/compare/v1.1.0...v1.2.0) (2025-12-28)
 
 
