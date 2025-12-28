@@ -140,7 +140,7 @@ void publishDiscovery(const char *fwVersion) {
         ids.add(deviceId);
         obj["name"] = "WindClock";
         obj["manufacturer"] = "Non Stop Networking";
-        obj["model"] = "ESP32 WindClock";
+        obj["model"] = "ESP32 Kite WindClock";
         obj["sw_version"] = fwVersion;
     };
 
