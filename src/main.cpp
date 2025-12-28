@@ -60,7 +60,11 @@ int RetryCounter = 0;
 int MaxRetryCounter = 100;
 String payload = "";
 
-constexpr const char *FW_VERSION = "ha-mqtt";
+#ifndef WINDCLOCK_VERSION
+#define WINDCLOCK_VERSION "dev"
+#endif
+
+constexpr const char *FW_VERSION = WINDCLOCK_VERSION;
 
 void applyLedSettings();
 void requestFetchWindNow();
