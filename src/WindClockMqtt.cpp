@@ -123,9 +123,9 @@ void publishState(const WindClockTelemetry &telemetry, bool highMode, bool retai
 }
 
 void publishDiscovery(const char *fwVersion) {
-    Serial.println("RPA Publishing Home Assistant MQTT Discovery config...");
+   
     if (!mqttClient.connected()) return;
-    Serial.println("RPA MQTT connected.");
+    Serial.println("MQTT connected.");
 
     const String stateTopic = deviceTopic + "/state";
     const String lightStateTopic = deviceTopic + "/state/light";
@@ -195,7 +195,6 @@ void publishDiscovery(const char *fwVersion) {
         doc["payload_not_available"] = "offline";
         JsonObject dev = doc.createNestedObject("device");
         deviceObj(dev);
-        Serial.println(String("homeassistant/") + s.component + "/" + deviceId + "/" + s.objectId + "/config");
         publishJson(String("homeassistant/") + s.component + "/" + deviceId + "/" + s.objectId + "/config", doc, true);
     }
 
@@ -410,8 +409,6 @@ void windClockMqttBegin(const char *fwVersion, void (*applyLedSettings)(), void 
 
     deviceTopic = baseTopic + "/" + deviceId;
     availabilityTopic = deviceTopic + "/status";
-Serial.print("DeviceTopic: ");
-Serial.println(deviceTopic);
     discoveryPublished = false;
     lastReconnectAttemptMs = 0;
     lastStatePublishMs = 0;
@@ -444,8 +441,6 @@ void windClockMqttLoop(const WindClockTelemetry &telemetry, bool highMode) {
                            highMode != lastHighMode;
 
     if (telemetryChanged || (now - lastStatePublishMs > 10000)) {
-        Serial.print("MQTT Loop - telemetryChanged: ");
-        Serial.println(telemetryChanged);
         publishState(telemetry, highMode, true);
         lastStatePublishMs = now;
         lastTelemetry = telemetry;
@@ -454,7 +449,6 @@ void windClockMqttLoop(const WindClockTelemetry &telemetry, bool highMode) {
     }
 
     if (now - lastLightPublishMs > 30000) {
-        Serial.print("MQTT Loop - publishing light state");
         publishLightState();
         lastLightPublishMs = now;
     }

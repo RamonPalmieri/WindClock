@@ -6,6 +6,10 @@
 #include <ESP32Ping.h>
 #include <HTTPClient.h>
 
+#include <ArduinoOTA.h>
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+
 #include "ClockSettings.h"
 #include "WindClockMqtt.h"
 #include <NSNWindClockLeds.h> // Staat in de Include folder
@@ -68,6 +72,8 @@ constexpr const char *FW_VERSION = WINDCLOCK_VERSION;
 
 void applyLedSettings();
 void requestFetchWindNow();
+
+static volatile bool otaUpdating = false;
 
 static bool clockSettingsEqual(const ClockSettings &a, const ClockSettings &b) {
     return a.ClockMode == b.ClockMode &&
@@ -171,6 +177,47 @@ void setup() {
         Serial.println("\nWiFi connected");
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
+
+        // Improves OTA reliability on some networks.
+        WiFi.setSleep(false);
+
+        // OTA hostname: windclock-<last6hex>
+        {
+            uint64_t mac = ESP.getEfuseMac();
+            char hostname[32];
+            snprintf(hostname, sizeof(hostname), "windclock-%06X", (uint32_t)(mac & 0xFFFFFF));
+            ArduinoOTA.setHostname(hostname);
+            Serial.print("OTA hostname: ");
+            Serial.println(hostname);
+        }
+
+#ifdef OTA_PASSWORD
+        // Optional: set in platformio.ini build_flags, e.g. -DOTA_PASSWORD=\"secret\"
+        ArduinoOTA.setPassword(OTA_PASSWORD);
+#endif
+
+        ArduinoOTA.onStart([]() {
+            otaUpdating = true;
+
+            // Stop timer ISR during OTA (it currently triggers serial prints).
+            if (timer != nullptr) {
+                timerAlarmDisable(timer);
+            }
+
+            Serial.println("OTA update start");
+        });
+        ArduinoOTA.onEnd([]() {
+            Serial.println("\nOTA update end");
+            otaUpdating = false;
+        });
+        ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+            Serial.printf("OTA progress: %u%%\r", (progress * 100U) / total);
+        });
+        ArduinoOTA.onError([](ota_error_t error) {
+            Serial.printf("OTA error[%u]\n", error);
+        });
+        ArduinoOTA.begin();
+        Serial.println("OTA ready");
     } else {
         Serial.println("\nWiFi connection failed. Starting Access Point...");
         WiFi.mode(WIFI_AP);
@@ -193,6 +240,12 @@ void setup() {
 }
 
 void loop() {
+
+  ArduinoOTA.handle();
+  if (otaUpdating) {
+    delay(2);
+    return;
+  }
   
 /*
   delay(500);
@@ -247,13 +300,11 @@ void IRAM_ATTR onTimerSeconde(){
 
   if(intWindUpdateTime > conFetchWindData)
   {
-    Serial.println("Detected that we have to fetch data from the website");
     intWindUpdateTime = 0;
     blnFetchWindData = true;
   }
   if(intHoogLaagTime > conChangeLaagHoog)
   {
-    Serial.println("We must change between high and low");
       intHoogLaagTime = 0;
       blnRefreshHoogLaag = true;
   }
@@ -283,6 +334,7 @@ void FetchWindData()
 
   HTTPClient http;
   http.begin(settings.url); //Specify the URL
+  http.setTimeout(3000);
   int httpCode = http.GET();                                        //Make the request
  
   if (httpCode == HTTP_CODE_OK) { //Check for the returning code

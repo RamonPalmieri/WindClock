@@ -1,5 +1,6 @@
 Import("env")
 
+import os
 import subprocess
 
 
@@ -38,3 +39,10 @@ version = _git_tag_or_fallback(env["PROJECT_DIR"])
 # PlatformIO passes these defines straight to the compiler; to ensure this becomes
 # a proper C string literal we need escaped quotes.
 env.Append(CPPDEFINES=[("WINDCLOCK_VERSION", '\\"%s\\"' % version)])
+
+# Optional: OTA password injected from environment.
+# Export OTA_PASSWORD in your shell before building/flashing.
+ota_password = os.environ.get("OTA_PASSWORD")
+if ota_password:
+    env.Append(CPPDEFINES=[("OTA_PASSWORD", '\\"%s\\"' % ota_password)])
+
