@@ -1,5 +1,6 @@
 Import("env")
 
+import os
 import subprocess
 
 
@@ -41,7 +42,7 @@ env.Append(CPPDEFINES=[("WINDCLOCK_VERSION", '\\"%s\\"' % version)])
 
 # Optional: OTA password injected from environment.
 # Export OTA_PASSWORD in your shell before building/flashing.
-ota_password = env.get("ENV", {}).get("OTA_PASSWORD")
+ota_password = os.environ.get("OTA_PASSWORD")
 if ota_password:
     env.Append(CPPDEFINES=[("OTA_PASSWORD", '\\"%s\\"' % ota_password)])
 
