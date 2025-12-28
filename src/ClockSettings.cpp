@@ -9,8 +9,6 @@ void loadSettingsFromNVS() {
 
 
 Serial.println("Loading settings from NVS...");
-Serial.print("MQTT BaseTopic: ");
-Serial.println(settings.MqttBaseTopic);
 
     prefs.getString("ssid", "").toCharArray(settings.WifiSSID, sizeof(settings.WifiSSID));
     prefs.getString("pwd", "").toCharArray(settings.WifiPWD, sizeof(settings.WifiPWD));
