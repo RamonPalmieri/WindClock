@@ -1,9 +1,18 @@
 {
-    "WifiSSID" : "NSN-IoT",
-    "WifiPWD":  "InternetOfThingsNSN!",
-    "BlynkKey": "JGsEppJAoNMvsMIf92apnwYIsahCY1LW",
-    "ClockMode" : 0,
-    "urlActueleWind" : "http://192.168.2.6/windstats/windstats.php",
-    "url" : "http://192.168.2.6/windstats/windstats.php?station=6225",
-    "KnopenMin" : 14
+    "WifiSSID": "NSN-IoT",
+    "WifiPWD": "InternetOfThingsNSN!",
+    "BlynkKey": "NotUsedAnymore",
+    "ClockMode": 0,
+    "urlActueleWind": "http://192.168.2.6/windstats/windstats.php",
+    "url": "http://192.168.2.6/windstats/windstats.php?station=6225",
+    "KnopenMin": 14,
+
+    "MqttHost": "192.168.30.106",
+    "MqttPort": 1883,
+    "MqttUser": "mqtt",
+    "MqttPassword": "ZRnnJxF2bPX6CPqPa6qN",
+    "MqttBaseTopic": "windclock",
+
+    "LedsOn": true,
+    "Brightness": 128
 }

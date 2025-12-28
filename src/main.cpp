@@ -7,6 +7,7 @@
 #include <HTTPClient.h>
 
 #include "ClockSettings.h"
+#include "WindClockMqtt.h"
 #include <NSNWindClockLeds.h> // Staat in de Include folder
 #include <NSNSDCard.h>
 #include "WindClockAP.cpp"
@@ -59,6 +60,28 @@ int RetryCounter = 0;
 int MaxRetryCounter = 100;
 String payload = "";
 
+constexpr const char *FW_VERSION = "ha-mqtt";
+
+void applyLedSettings();
+void requestFetchWindNow();
+
+static bool clockSettingsEqual(const ClockSettings &a, const ClockSettings &b) {
+    return a.ClockMode == b.ClockMode &&
+           a.KnopenMin == b.KnopenMin &&
+           a.MqttPort == b.MqttPort &&
+           a.LedsOn == b.LedsOn &&
+           a.Brightness == b.Brightness &&
+           strncmp(a.WifiSSID, b.WifiSSID, sizeof(a.WifiSSID)) == 0 &&
+           strncmp(a.WifiPWD, b.WifiPWD, sizeof(a.WifiPWD)) == 0 &&
+           strncmp(a.BlynkKey, b.BlynkKey, sizeof(a.BlynkKey)) == 0 &&
+           strncmp(a.urlActueleWind, b.urlActueleWind, sizeof(a.urlActueleWind)) == 0 &&
+           strncmp(a.url, b.url, sizeof(a.url)) == 0 &&
+           strncmp(a.MqttHost, b.MqttHost, sizeof(a.MqttHost)) == 0 &&
+           strncmp(a.MqttUser, b.MqttUser, sizeof(a.MqttUser)) == 0 &&
+           strncmp(a.MqttPassword, b.MqttPassword, sizeof(a.MqttPassword)) == 0 &&
+           strncmp(a.MqttBaseTopic, b.MqttBaseTopic, sizeof(a.MqttBaseTopic)) == 0;
+}
+
 void IRAM_ATTR onTimerSeconde();
 void ProcessWind(int);
 void FetchWindData();
@@ -86,6 +109,23 @@ struct WindData {
 
 WindData spot;
 
+void applyLedSettings() {
+    int brightness = settings.Brightness;
+    if (brightness < 0) brightness = 0;
+    if (brightness > 255) brightness = 255;
+
+    FastLED.setBrightness((uint8_t)brightness);
+
+    if (!settings.LedsOn) {
+        LightOff();
+        FastLED.show();
+    }
+}
+
+void requestFetchWindNow() {
+    blnFetchWindData = true;
+}
+
 void setup() {
     delay(2000);  // Allow time for power stabilization
     Serial.begin(115200);
@@ -94,10 +134,21 @@ void setup() {
 
     loadSettingsFromNVS();
 
+    // If an SD card is present and ClockSettings.json contains different values
+    // than NVS, persist those SD values into NVS.
+    ClockSettings nvsSettings = settings;
+    ClockSettings sdSettings = settings;
+    sdSettings = LoadClockSettings(filename, sdSettings);
+    if (!clockSettingsEqual(nvsSettings, sdSettings)) {
+        Serial.println("Settings on SD differ from NVS; saving to NVS...");
+        settings = sdSettings;
+        saveSettingsToNVS();
+    }
+
     bool wifiConnected = false;
 
     if (strlen(settings.WifiSSID) > 0 && strlen(settings.WifiPWD) > 0) {
-        Serial.println("Trying WiFi from NVS...");
+        Serial.println("Trying WiFi...");
         Serial.print("SSID: ");
         Serial.println(settings.WifiSSID);
 
@@ -112,27 +163,7 @@ void setup() {
         }
     }
 
-    if (!wifiConnected) {
-        Serial.println("\nTrying to load WiFi settings from SD card...");
-        settings = LoadClockSettings(filename, settings);
-
-        if (strlen(settings.WifiSSID) > 0 && strlen(settings.WifiPWD) > 0) {
-            Serial.print("SSID from SD: ");
-            Serial.println(settings.WifiSSID);
-            WiFi.begin(settings.WifiSSID, settings.WifiPWD);
-            for (int i = 0; i < 10; ++i) {
-                if (WiFi.status() == WL_CONNECTED) {
-                    wifiConnected = true;
-                    break;
-                }
-                delay(500);
-                Serial.print(".");
-            }
-        }
-    }
-
     if (wifiConnected) {
-        saveSettingsToNVS();  // Save all settings to NVS
         Serial.println("\nWiFi connected");
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
@@ -145,6 +176,9 @@ void setup() {
         Serial.println(WiFi.softAPIP());
         startAccessPointWebServer();
     }
+
+    applyLedSettings();
+    windClockMqttBegin(FW_VERSION, applyLedSettings, requestFetchWindNow);
 
     blnFetchWindData = true;
 
@@ -183,9 +217,21 @@ void loop() {
       blnHoog = true;
     }
     RefreshHoogLaag();
-  }
-  handleAccessPointClient();
-}
+   }
+
+   WindClockTelemetry telemetry;
+   telemetry.wind = (int)(spot.Wind + 0.5f);
+   telemetry.gust = (int)(spot.WindStoot + 0.5f);
+   telemetry.windDirection = spot.WindRichting;
+   telemetry.directionFrom = spot.RichtingVan;
+   telemetry.directionTo = spot.RichtingTot;
+   telemetry.temperature = spot.Temperatuur;
+   telemetry.error = spot.Error;
+
+   windClockMqttLoop(telemetry, blnHoog);
+
+   handleAccessPointClient();
+ }
 
 void IRAM_ATTR onTimerSeconde(){
 
@@ -580,6 +626,12 @@ void ProcessWind(int WindKnots){
 
 void RefreshHoogLaag()
 {
+    if (!settings.LedsOn) {
+        LightOff();
+        FastLED.show();
+        return;
+    }
+
     LightOff();
     ProcessError();
     if(blnHoog)

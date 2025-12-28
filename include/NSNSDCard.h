@@ -1,3 +1,6 @@
+#pragma once
+
+#include "ClockSettings.h"
 
 #include "FS.h"
 #include "SD.h"
@@ -44,40 +47,79 @@ ClockSettings LoadClockSettings (const char *filename, ClockSettings &settings) 
 
     if (!SD.begin(CS,spi,80000000)) {
       Serial.println("Card Mount Failed");
+      spi.end();
+      pinMode(CS, OUTPUT);    // Ensure CS pin is not floating
+      digitalWrite(CS, HIGH); // Disable chip select
       return settings;
     }
 
     // Open file for reading
     File file = SD.open(filename);
+    if (!file) {
+      Serial.println("Failed to open settings file for reading");
+      SD.end();
+      spi.end();
+      pinMode(CS, OUTPUT);    // Ensure CS pin is not floating
+      digitalWrite(CS, HIGH); // Disable chip select
+      return settings;
+    }
 
     // Allocate a temporary JsonDocument
     // Don't forget to change the capacity to match your requirements.
     // Use https://arduinojson.org/v6/assistant to compute the capacity.
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<1024> doc;
 
     // Deserialize the JSON document
     DeserializationError error = deserializeJson(doc, file);
-    if (error)
-        Serial.println(F("Failed to read file, using default configuration"));
+    if (error) {
+        Serial.println(F("Failed to read file, keeping existing configuration"));
+        file.close();
+        SD.end();               // Deinitialize SD card
+        spi.end();              // Deinitialize SPI bus
+        pinMode(CS, OUTPUT);    // Ensure CS pin is not floating
+        digitalWrite(CS, HIGH); // Disable chip select
+        return settings;
+    }
 
-    // Copy values from the JsonDocument to the Config
-    settings.ClockMode = doc["ClockMode"] | 0;
-    settings.KnopenMin = doc["KnopenMin"] | 0;
-    strlcpy(settings.WifiSSID,                  // <- destination
-            doc["WifiSSID"] | "example.com",  // <- source
-            sizeof(settings.WifiSSID));         // <- destination's capacity
-    strlcpy(settings.WifiPWD,                  // <- destination
-            doc["WifiPWD"] | "fakepassword",  // <- source
-            sizeof(settings.WifiPWD));         // <- destination's capacity
-    strlcpy(settings.BlynkKey,                  
-            doc["BlynkKey"] | "fakekey",  
-            sizeof(settings.BlynkKey)); 
-    strlcpy(settings.urlActueleWind,                  
-            doc["urlActueleWind"] | "default",  
-            sizeof(settings.urlActueleWind)); 
-    strlcpy(settings.url,                  
-            doc["url"] | "default",  
-            sizeof(settings.url)); 
+    // Copy values from the JsonDocument to the Config.
+    // For missing keys, keep the existing values in `settings`.
+    settings.ClockMode = doc["ClockMode"] | settings.ClockMode;
+    settings.KnopenMin = doc["KnopenMin"] | settings.KnopenMin;
+
+    strlcpy(settings.WifiSSID,
+            doc["WifiSSID"] | settings.WifiSSID,
+            sizeof(settings.WifiSSID));
+    strlcpy(settings.WifiPWD,
+            doc["WifiPWD"] | settings.WifiPWD,
+            sizeof(settings.WifiPWD));
+    strlcpy(settings.BlynkKey,
+            doc["BlynkKey"] | settings.BlynkKey,
+            sizeof(settings.BlynkKey));
+    strlcpy(settings.urlActueleWind,
+            doc["urlActueleWind"] | settings.urlActueleWind,
+            sizeof(settings.urlActueleWind));
+    strlcpy(settings.url,
+            doc["url"] | settings.url,
+            sizeof(settings.url));
+
+    // MQTT / Home Assistant (optional)
+    strlcpy(settings.MqttHost,
+            doc["MqttHost"] | settings.MqttHost,
+            sizeof(settings.MqttHost));
+    settings.MqttPort = doc["MqttPort"] | settings.MqttPort;
+    strlcpy(settings.MqttUser,
+            doc["MqttUser"] | settings.MqttUser,
+            sizeof(settings.MqttUser));
+    strlcpy(settings.MqttPassword,
+            doc["MqttPassword"] | settings.MqttPassword,
+            sizeof(settings.MqttPassword));
+    strlcpy(settings.MqttBaseTopic,
+            doc["MqttBaseTopic"] | settings.MqttBaseTopic,
+            sizeof(settings.MqttBaseTopic));
+
+    // LED control
+    settings.LedsOn = doc["LedsOn"] | settings.LedsOn;
+    settings.Brightness = doc["Brightness"] | settings.Brightness;
 
     // Close the file (Curiously, File's destructor doesn't close the file)
     file.close();
