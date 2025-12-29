@@ -1,5 +1,10 @@
 #include <Arduino.h>
 #include <FastLED.h>
+
+#ifdef ESP32
+#include <esp_system.h>
+#endif
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
@@ -140,7 +145,16 @@ void setup() {
     delay(2000);  // Allow time for power stabilization
     Serial.begin(115200);
 
+#ifdef ESP32
+    uint32_t seed = esp_random();
+    random16_set_seed((uint16_t)seed);
+    random16_add_entropy((uint16_t)(seed >> 16));
+#else
+    random16_set_seed((uint16_t)micros());
+#endif
+
     FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
+
 
     loadSettingsFromNVS();
 
@@ -411,265 +425,274 @@ void FetchWindData()
 
 void ProcessWind(int WindKnots){
 
+  // Keep one random color per displayed number, so e.g. "twee-en-twintig"
+  // uses the same color for "twee", "en" and "twintig".
+  static int lastWindKnots = -1;
+  static CRGB windColor = CRGB::White;
+
+  if (WindKnots != lastWindKnots) {
+    windColor = CHSV(random8(), 255, 255);
+    lastWindKnots = WindKnots;
+  }
+
   switch (WindKnots)
   {
-    case 1: 
-    
-      LightEen();
+    case 1:
+      LightEen(windColor);
       break;
     case 2:
-      LightTwee();
+      LightTwee(windColor);
       break;
     case 3:
-      LightDrie();
+      LightDrie(windColor);
       break;
     case 4:
-      LightVier();
+      LightVier(windColor);
       break;
     case 5:
-      LightVijf();
+      LightVijf(windColor);
       break;
     case 6:
-      LightZes();
+      LightZes(windColor);
       break;
     case 7:
-      LightZeven();
+      LightZeven(windColor);
       break;
     case 8:
-      LightAcht();
+      LightAcht(windColor);
       break;
     case 9:
-      LightNegen();
+      LightNegen(windColor);
       break;
     case 10:
-      LightTien();
+      LightTien(windColor);
       break;
     case 11:
-      LightElf();
+      LightElf(windColor);
       break;
     case 12:
-      LightTwaalf();
+      LightTwaalf(windColor);
       break;
     case 13:
-      LightDertien();
+      LightDertien(windColor);
       break;
     case 14:
-      LightVeertien();
+      LightVeertien(windColor);
       break;
     case 15:
-      LightVijf();
-      LightTien();
+      LightVijf(windColor);
+      LightTien(windColor);
       break;
     case 16:
-      LightZes();
-      LightTien();
+      LightZes(windColor);
+      LightTien(windColor);
       break;
     case 17:
-      LightZeven();
-      LightTien();
+      LightZeven(windColor);
+      LightTien(windColor);
       break;
     case 18:
-      LightAcht();
-      LightTien();
+      LightAcht(windColor);
+      LightTien(windColor);
       break;
     case 19:
-      LightNegen();
-      LightTien();
+      LightNegen(windColor);
+      LightTien(windColor);
       break;
     case 20:
-        LightTwintig();
+      LightTwintig(windColor);
       break;
     case 21:
-      LightEen();
-      LightEn();
-      LightTwintig();
+      LightEen(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 22:
-      LightTwee();
-      LightEn();
-      LightTwintig();
+      LightTwee(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 23:
-      LightDrie();
-      LightEn();
-      LightTwintig();
+      LightDrie(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 24:
-      LightVier();
-      LightEn();
-      LightTwintig();
+      LightVier(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 25:
-      LightVijf();
-      LightEn();
-      LightTwintig();
+      LightVijf(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 26:
-      LightZes();
-      LightEn();
-      LightTwintig();
+      LightZes(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 27:
-      LightZeven();
-      LightEn();
-      LightTwintig();
+      LightZeven(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 28:
-      LightAcht();
-      LightEn();
-      LightTwintig();
+      LightAcht(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
     case 29:
-      LightNegen();
-      LightEn();
-      LightTwintig();
+      LightNegen(windColor);
+      LightEn(windColor);
+      LightTwintig(windColor);
       break;
 
     case 30:
-      LightDertig();
+      LightDertig(windColor);
       break;
     case 31:
-      LightEen();
-      LightEn();
-      LightDertig();
+      LightEen(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 32:
-      LightTwee();
-      LightEn();
-      LightDertig();
+      LightTwee(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 33:
-      LightDrie();
-      LightEn();
-      LightDertig();
+      LightDrie(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 34:
-      LightVier();
-      LightEn();
-      LightDertig();
+      LightVier(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 35:
-      LightVijf();
-      LightEn();
-      LightDertig();
+      LightVijf(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 36:
-      LightZes();
-      LightEn();
-      LightDertig();
+      LightZes(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 37:
-      LightZeven();
-      LightEn();
-      LightDertig();
+      LightZeven(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 38:
-      LightAcht();
-      LightEn();
-      LightDertig();
+      LightAcht(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
     case 39:
-      LightNegen();
-      LightEn();
-      LightDertig();
+      LightNegen(windColor);
+      LightEn(windColor);
+      LightDertig(windColor);
       break;
 
     case 40:
-      LightVeertig();
+      LightVeertig(windColor);
       break;
     case 41:
-      LightEen();
-      LightEn();
-      LightVeertig();
+      LightEen(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 42:
-      LightTwee();
-      LightEn();
-      LightVeertig();
+      LightTwee(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 43:
-      LightDrie();
-      LightEn();
-      LightVeertig();
+      LightDrie(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 44:
-      LightVier();
-      LightEn();
-      LightVeertig();
+      LightVier(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 45:
-      LightVijf();
-      LightEn();
-      LightVeertig();
+      LightVijf(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 46:
-      LightZes();
-      LightEn();
-      LightVeertig();
+      LightZes(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 47:
-      LightZeven();
-      LightEn();
-      LightVeertig();
+      LightZeven(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 48:
-      LightAcht();
-      LightEn();
-      LightVeertig();
+      LightAcht(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
     case 49:
-      LightNegen();
-      LightEn();
-      LightVeertig();
+      LightNegen(windColor);
+      LightEn(windColor);
+      LightVeertig(windColor);
       break;
 
     case 50:
-      LightVijftig();
+      LightVijftig(windColor);
       break;
     case 51:
-      LightEen();
-      LightEn();
-      LightVijftig();
+      LightEen(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 52:
-      LightTwee();
-      LightEn();
-      LightVijftig();
+      LightTwee(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 53:
-      LightDrie();
-      LightEn();
-      LightVijftig();
+      LightDrie(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 54:
-      LightVier();
-      LightEn();
-      LightVijftig();
+      LightVier(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 55:
-      LightVijf();
-      LightEn();
-      LightVijftig();
+      LightVijf(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 56:
-      LightZes();
-      LightEn();
-      LightVijftig();
+      LightZes(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 57:
-      LightZeven();
-      LightEn();
-      LightVijftig();
+      LightZeven(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 58:
-      LightAcht();
-      LightEn();
-      LightVijftig();
+      LightAcht(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     case 59:
-      LightNegen();
-      LightEn();
-      LightVijftig();
+      LightNegen(windColor);
+      LightEn(windColor);
+      LightVijftig(windColor);
       break;
     default:
       // LightInsane();
@@ -679,6 +702,7 @@ void ProcessWind(int WindKnots){
     FastLED.show();
     FastLED.delay(1000/FRAMES_PER_SECOND);
 }
+
 
 void RefreshHoogLaag()
 {
