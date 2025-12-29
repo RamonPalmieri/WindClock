@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/RamonPalmieri/WindClock/compare/v1.3.0...v1.4.0) (2025-12-29)
+
+
+### Features
+
+* per number one color ([cf4c630](https://github.com/RamonPalmieri/WindClock/commit/cf4c630013fe7c517acb8f8d1dc66e05010d4dd9))
+
 # [1.3.0](https://github.com/RamonPalmieri/WindClock/compare/v1.2.0...v1.3.0) (2025-12-28)
 
 
